@@ -1,0 +1,652 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet" />
+    <link rel="stylesheet" href="src/style.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.35.0/dist/tabler-icons.min.css" />
+    <title>Fantasy Map Editor</title>
+    <script type="module" src="/src/main.js"></script>
+  </head>
+  <body>
+    <div class="app">
+      <!-- ================= Верхняя панель ================= -->
+      <header class="header">
+        <div class="header__left">
+          <a href="/" class="header__logo" aria-label="Fantasy Map Editor">
+            <i class="ti ti-mountain header__logo-icon"></i>
+          </a>
+
+          <div class="world-menu">
+            <button
+              class="world-menu__button"
+              id="world-menu-button"
+              type="button"
+              aria-haspopup="true"
+              aria-expanded="false"
+              aria-controls="world-menu">
+              <span id="world-name">Новый мир</span>
+              <i class="ti ti-chevron-down icon"></i>
+            </button>
+
+            <div class="menu" id="world-menu" hidden>
+              <button class="menu__item" type="button" data-action="settings">
+                Настройки мира…
+              </button>
+              <button class="menu__item" type="button" data-action="export-map">
+                Экспорт карты в файл
+              </button>
+              <button class="menu__item" type="button" data-action="export-world">
+                Экспорт всего мира в файл
+              </button>
+              <button class="menu__item" type="button" data-action="import-file">
+                Импорт из файла…
+              </button>
+              <button class="menu__item menu__item--danger" type="button" data-action="new-world">
+                Начать новый мир…
+              </button>
+              <button class="menu__item menu__item--danger" type="button" data-action="delete-map">
+                Удалить текущую карту…
+              </button>
+            </div>
+            <input type="file" id="import-input" accept=".json,application/json" hidden />
+          </div>
+        </div>
+
+        <div class="header__center">
+          <div class="search">
+            <i class="ti ti-search icon search__icon"></i>
+            <input
+              class="search__input"
+              id="search-input"
+              type="search"
+              placeholder="Поиск по миру…"
+              autocomplete="off"
+              aria-label="Поиск по миру" />
+            <ul class="search__results" id="search-results" hidden></ul>
+          </div>
+        </div>
+
+        <nav class="header__right" aria-label="Разделы мира">
+          <button
+            class="header__icon"
+            type="button"
+            data-world="npc"
+            title="НПС"
+            aria-label="Все НПС">
+            <i class="ti ti-users icon"></i>
+          </button>
+          <button
+            class="header__icon"
+            type="button"
+            data-world="loot"
+            title="Уникальная добыча"
+            aria-label="Вся уникальная добыча">
+            <i class="ti ti-coins icon"></i>
+          </button>
+          <button
+            class="header__icon"
+            type="button"
+            data-world="quests"
+            title="Квесты"
+            aria-label="Все квесты">
+            <i class="ti ti-question-mark icon"></i>
+          </button>
+          <button
+            class="header__icon"
+            type="button"
+            data-world="info"
+            title="Уникальная информация"
+            aria-label="Вся уникальная информация">
+            <i class="ti ti-info-circle icon icon--fill"></i>
+          </button>
+          <button
+            class="header__icon"
+            type="button"
+            data-world="enemies"
+            title="Враги"
+            aria-label="Все враги">
+            <i class="ti ti-swords icon"></i>
+          </button>
+          <button
+            class="header__icon"
+            type="button"
+            data-world="places"
+            title="Важные места"
+            aria-label="Все важные места">
+            <i class="ti ti-star-filled icon icon--fill"></i>
+          </button>
+          <button
+            class="header__icon"
+            type="button"
+            data-action="settings"
+            title="Настройки"
+            aria-label="Настройки мира">
+            <i class="ti ti-settings icon icon--fill"></i>
+          </button>
+        </nav>
+      </header>
+
+      <div class="editor-layout">
+        <!-- ================= Левая панель инструментов ================= -->
+        <aside class="sidebar" aria-label="Инструменты">
+          <button
+            class="sidebar__tool sidebar__tool--active"
+            type="button"
+            data-tool="select"
+            aria-pressed="true">
+            <i class="ti ti-pointer-filled icon icon--fill"></i>
+            <span class="sidebar__tool-name">Выбор</span>
+          </button>
+
+          <button class="sidebar__tool" type="button" data-tool="hand" aria-pressed="false">
+            <i class="ti ti-hand-finger icon"></i>
+            <span class="sidebar__tool-name">Рука</span>
+          </button>
+
+          <button class="sidebar__tool" type="button" data-tool="brush" aria-pressed="false">
+            <i class="ti ti-brush icon"></i>
+            <span class="sidebar__tool-name">Кисть</span>
+          </button>
+
+          <!-- Быстрые обозначения (те же инструменты, что и в «Условных обозначениях») -->
+          <div class="sidebar__quick" role="group" aria-label="Быстрые обозначения">
+            <button
+              class="quick"
+              type="button"
+              data-symbol="city"
+              title="Город"
+              aria-label="Город"
+              aria-pressed="false">
+              <svg viewBox="0 0 24 24">
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="6"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.200" />
+              </svg>
+            </button>
+            <button
+              class="quick"
+              type="button"
+              data-symbol="golem-temple"
+              title="Храм големов"
+              aria-label="Храм големов"
+              aria-pressed="false">
+              <svg viewBox="0 0 24 24">
+                <rect x="6" y="6" width="12" height="12" fill="currentColor" />
+              </svg>
+            </button>
+            <button
+              class="quick"
+              type="button"
+              data-symbol="cave"
+              title="Пещеры"
+              aria-label="Пещеры"
+              aria-pressed="false">
+              <svg viewBox="0 0 24 24"><path d="M12 5l7 13H5z" fill="currentColor" /></svg>
+            </button>
+            <button
+              class="quick"
+              type="button"
+              data-symbol="village"
+              title="Деревня"
+              aria-label="Деревня"
+              aria-pressed="false">
+              <svg viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="4.500" fill="currentColor" />
+              </svg>
+            </button>
+            <button
+              class="quick"
+              type="button"
+              data-symbol="peace-trees"
+              title="Цветные деревья"
+              aria-label="Цветные деревья"
+              aria-pressed="false">
+              <svg viewBox="0 0 24 24">
+                <path d="M12 3c4 4 6 7 6 10a6 6 0 01-12 0c0-3 2-6 6-10z" fill="currentColor" />
+              </svg>
+            </button>
+          </div>
+
+          <button class="sidebar__tool" type="button" data-tool="text" aria-pressed="false">
+            <i class="ti ti-letter-t icon"></i>
+            <span class="sidebar__tool-name">Текст</span>
+          </button>
+
+          <button class="sidebar__tool" type="button" data-tool="ruler" aria-pressed="false">
+            <i class="ti ti-ruler-2 icon"></i>
+            <span class="sidebar__tool-name">Линейка</span>
+          </button>
+
+          <button
+            class="sidebar__tool"
+            type="button"
+            data-action="toggle-legend"
+            aria-pressed="false"
+            aria-expanded="false"
+            aria-controls="flyout-legend">
+            <i class="ti ti-map-pin icon"></i>
+            <span class="sidebar__tool-name">Условные обозначения</span>
+          </button>
+
+          <button
+            class="sidebar__tool"
+            type="button"
+            data-action="toggle-maps"
+            aria-pressed="true"
+            aria-controls="map-side">
+            <i class="ti ti-map icon"></i>
+            <span class="sidebar__tool-name">Карта</span>
+          </button>
+        </aside>
+
+        <!-- ================= Центр: карта и колонка карт/масштаба ================= -->
+        <main class="workspace">
+          <section class="map-editor" aria-label="Рабочая область">
+            <div class="map-editor__canvas" id="canvas" data-tool="select">
+              <svg
+                class="map-editor__svg"
+                id="map"
+                viewBox="0 0 1400 900"
+                xmlns="http://www.w3.org/2000/svg"
+                role="img"
+                aria-label="Холст фэнтези-карты">
+                <defs>
+                  <pattern id="map-grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                    <path d="M40 0H0V40" fill="none" class="map-editor__grid-line" />
+                  </pattern>
+                </defs>
+
+                <g id="layer-terrain"></g>
+                <rect
+                  class="map-editor__grid"
+                  id="map-grid-rect"
+                  width="1400"
+                  height="1800"
+                  fill="url(#map-grid)" />
+                <g id="layer-lines"></g>
+                <g id="layer-objects"></g>
+                <g id="layer-overlay"></g>
+              </svg>
+
+              <!-- Отмена / повтор / удаление -->
+              <div class="map-actions" role="group" aria-label="Действия">
+                <button
+                  class="map-actions__btn undo-button"
+                  type="button"
+                  title="Отменить (Ctrl+Z)"
+                  aria-label="Отменить действие"
+                  disabled>
+                  <i class="ti ti-arrow-back-up icon"></i>
+                </button>
+                <button
+                  class="map-actions__btn redo-button"
+                  type="button"
+                  title="Повторить (Ctrl+Shift+Z)"
+                  aria-label="Повторить действие"
+                  disabled>
+                  <i class="ti ti-arrow-forward-up icon"></i>
+                </button>
+                <button
+                  class="map-actions__btn map-actions__btn--danger delete-button"
+                  type="button"
+                  title="Удалить объект (Delete)"
+                  aria-label="Удалить объект"
+                  disabled>
+                  <i class="ti ti-trash icon"></i>
+                </button>
+              </div>
+
+              
+                            <!-- Всплывающая панель кисти -->
+              <div class="flyout" id="flyout-brush" hidden>
+                <h2 class="flyout__title">Кисть</h2>
+                <div class="flyout__swatches" id="brush-terrains"></div>
+                <div class="flyout__sizes" role="group" aria-label="Размер кисти">
+                  <button class="chip" type="button" data-size="1" aria-pressed="true">1×1</button>
+                  <button class="chip" type="button" data-size="2" aria-pressed="false">2×2</button>
+                  <button class="chip" type="button" data-size="3" aria-pressed="false">3×3</button>
+                </div>
+
+                <!-- Свой цвет: выбрать, назвать, сохранить -->
+                <form class="brush-add" id="brush-add-form">
+                  <input
+                    class="brush-add__color"
+                    id="brush-add-color"
+                    type="color"
+                    value="#4c8dff"
+                    aria-label="Цвет нового элемента кисти" />
+                  <input
+                    class="brush-add__name"
+                    id="brush-add-name"
+                    type="text"
+                    placeholder="Название"
+                    maxlength="24"
+                    autocomplete="off"
+                    required />
+                  <button class="btn btn--primary brush-add__save" type="submit">Сохранить</button>
+                </form>
+              </div>
+
+              <!-- Условные обозначения -->
+              <div class="flyout flyout--legend" id="flyout-legend" hidden>
+                <h2 class="flyout__title">Условные обозначения</h2>
+                <ul class="legend" id="legend-list"></ul>
+              </div>
+
+              <div class="map-hint" id="map-hint" role="status"></div>
+              <div class="map-tooltip" id="map-tooltip" role="tooltip" hidden></div>
+            </div>
+          </section>
+
+          <aside class="map-side" id="map-side" aria-label="Карты и масштаб">
+            <section class="map-side__section">
+              <h2 class="map-side__title">Карты</h2>
+              <ul class="maps-list" id="maps-list"></ul>
+              <button class="maps-add" id="map-add" type="button" aria-label="Добавить карту">
+                <i class="ti ti-plus icon"></i>
+              </button>
+            </section>
+
+            <section class="map-side__section map-side__zoom">
+              <h2 class="map-side__title">Масштаб</h2>
+              <button
+                class="zoom-btn"
+                type="button"
+                data-action="zoom-in"
+                aria-label="Увеличить масштаб">
+                <i class="ti ti-plus icon"></i>
+              </button>
+              <input
+                class="zoom-slider"
+                id="zoom-slider"
+                type="range"
+                min="0"
+                max="100"
+                step="1"
+                value="50"
+                aria-label="Масштаб карты"
+                aria-orientation="vertical" />
+              <button
+                class="zoom-btn"
+                type="button"
+                data-action="zoom-out"
+                aria-label="Уменьшить масштаб">
+                <i class="ti ti-minus icon"></i>
+              </button>
+            </section>
+
+            <section class="map-side__hints">
+              <div class="hint-row">
+                <i class="ti ti-hand-finger icon"></i>
+                <p>Ctrl + колесо — масштаб</p>
+              </div>
+              <div class="hint-row">
+                <i class="ti ti-arrows-move icon"></i>
+                <p>Колесо (зажать) — перемещение</p>
+              </div>
+            </section>
+          </aside>
+        </main>
+
+        <!-- ================= Правая панель свойств ================= -->
+        <button
+          class="props-toggle"
+          id="props-toggle"
+          type="button"
+          aria-expanded="true"
+          aria-controls="properties"
+          aria-label="Скрыть панель свойств">
+          <i class="ti ti-chevron-right icon"></i>
+        </button>
+
+        <aside class="properties" id="properties" aria-label="Свойства объекта">
+          <div class="properties__empty" id="properties-empty">
+            <h2 class="properties__empty-title">Свойства объекта</h2>
+            <p>Выбери объект на карте, чтобы посмотреть и изменить его свойства.</p>
+          </div>
+
+          <div class="properties__content" id="properties-content" hidden>
+            <header class="properties__header">
+              <h2 class="properties__title" id="properties-title"></h2>
+              <button
+                class="icon-btn"
+                id="properties-edit"
+                type="button"
+                aria-label="Изменить название"
+                title="Изменить название">
+                <i class="ti ti-pencil icon"></i>
+              </button>
+              <button
+                class="icon-btn properties__close"
+                id="properties-close"
+                type="button"
+                aria-label="Снять выделение"
+                title="Снять выделение">
+                <i class="ti ti-x icon"></i>
+              </button>
+            </header>
+
+            <div class="properties__tabs" id="properties-tabs" role="tablist"></div>
+
+            <div class="properties__body">
+              <!-- Общая информация -->
+              <section class="view" id="view-main">
+                <h3 class="view__title">Общая информация</h3>
+
+                <div class="form-row">
+                  <label for="object-type">Тип</label>
+                  <select class="control" id="object-type"></select>
+                </div>
+
+                <div class="form-row">
+                  <label for="object-name">Название</label>
+                  <input
+                    class="control"
+                    type="text"
+                    id="object-name"
+                    placeholder="Название объекта"
+                    autocomplete="off" />
+                </div>
+
+                <div class="form-row form-row--top">
+                  <label for="object-description">Описание</label>
+                  <textarea
+                    class="control"
+                    id="object-description"
+                    rows="4"
+                    placeholder="Опиши это место…"></textarea>
+                </div>
+
+                <div class="records-head">
+                  <h3 class="view__title view__title--big">Записи</h3>
+                  <button
+                    class="btn btn--outline"
+                    id="records-add-toggle"
+                    type="button"
+                    aria-expanded="false">
+                    <i class="ti ti-plus icon"></i>
+                    Добавить
+                  </button>
+                </div>
+
+                <form class="records-add" id="records-add-form" hidden>
+                  <select
+                    class="control"
+                    id="records-add-category"
+                    aria-label="Раздел записи"></select>
+                  <input
+                    class="control"
+                    id="records-add-text"
+                    type="text"
+                    placeholder="Текст записи"
+                    autocomplete="off"
+                    required />
+                  <button class="btn btn--primary" type="submit">Добавить запись</button>
+                </form>
+
+                <ul class="records" id="records-list"></ul>
+              </section>
+
+              <!-- Записи одного раздела -->
+              <section class="view" id="view-records" hidden>
+                <button class="back-link" id="records-back" type="button">
+                  <i class="ti ti-chevron-left icon"></i>
+                  Общая информация
+                </button>
+                <h3 class="view__title view__title--big" id="records-title"></h3>
+
+                <ul class="entries" id="entries-list"></ul>
+
+                <form class="entries-form" id="entries-form">
+                  <input
+                    class="control"
+                    id="entries-text"
+                    type="text"
+                    placeholder="Новая запись"
+                    autocomplete="off"
+                    required />
+                  <button class="btn btn--primary" type="submit">Добавить</button>
+                </form>
+              </section>
+
+              <!-- Внешний вид и подсказка -->
+              <section class="view" id="view-settings" hidden>
+                <h3 class="view__title">Внешний вид</h3>
+
+                <div class="form-row">
+                  <label for="object-color">Цвет</label>
+                  <input
+                    class="control control--color"
+                    type="color"
+                    id="object-color"
+                    value="#0b1220" />
+                </div>
+
+                <div class="form-row">
+                  <label for="object-size" id="object-size-label">Размер</label>
+                  <input
+                    class="control control--range"
+                    type="range"
+                    id="object-size"
+                    min="50"
+                    max="250"
+                    step="5"
+                    value="100" />
+                </div>
+
+                <h3 class="view__title view__title--spaced">Подсказка при наведении</h3>
+
+                <label class="check">
+                  <input type="checkbox" id="object-tooltip-on" checked />
+                  <span>Показывать подсказку</span>
+                </label>
+
+                <div class="form-row form-row--top">
+                  <label for="object-tooltip-text">Текст</label>
+                  <textarea
+                    class="control"
+                    id="object-tooltip-text"
+                    rows="3"
+                    placeholder="Если пусто — покажем название"></textarea>
+                </div>
+              </section>
+            </div>
+          </div>
+        </aside>
+      </div>
+
+      <!-- ================= Статус-бар ================= -->
+      <footer class="statusbar">
+        <div class="statusbar__left">
+          <span id="status-map">Карта 1</span>
+          <span class="statusbar__sep" aria-hidden="true">•</span>
+          <span id="status-size">35 x 45 клеток</span>
+          <span class="statusbar__sep" aria-hidden="true">•</span>
+          <span id="status-zoom">Масштаб: 100%</span>
+        </div>
+
+        <div class="statusbar__right">
+          <span class="save-state" id="save-state" data-state="saved" role="status">
+            <span class="save-state__dot" aria-hidden="true"></span>
+            <span id="save-state-text">Сохранено</span>
+          </span>
+          <span id="status-coords">X: — Y: —</span>
+          <button
+            class="icon-btn"
+            id="lock-button"
+            type="button"
+            aria-pressed="false"
+            aria-label="Заблокировать карту"
+            title="Заблокировать редактирование">
+            <i class="ti ti-lock-open icon"></i>
+          </button>
+        </div>
+      </footer>
+    </div>
+
+    <!-- ================= Диалоги ================= -->
+    <dialog class="dialog" id="world-dialog" aria-labelledby="world-dialog-title">
+      <header class="dialog__header">
+        <h2 class="dialog__title" id="world-dialog-title"></h2>
+        <button class="icon-btn" type="button" data-close aria-label="Закрыть">
+          <i class="ti ti-x icon"></i>
+        </button>
+      </header>
+      <ul class="dialog__list" id="world-dialog-list"></ul>
+    </dialog>
+
+    <dialog class="dialog" id="choice-dialog" aria-labelledby="choice-title">
+      <header class="dialog__header">
+        <h2 class="dialog__title" id="choice-title"></h2>
+        <button class="icon-btn" type="button" data-close aria-label="Закрыть">
+          <i class="ti ti-x icon"></i>
+        </button>
+      </header>
+
+      <div class="dialog__form">
+        <p class="dialog__text" id="choice-text"></p>
+        <div class="dialog__actions" id="choice-actions"></div>
+      </div>
+    </dialog>
+
+    <dialog class="dialog" id="settings-dialog" aria-labelledby="settings-dialog-title">
+      <header class="dialog__header">
+        <h2 class="dialog__title" id="settings-dialog-title">Настройки мира</h2>
+        <button class="icon-btn" type="button" data-close aria-label="Закрыть">
+          <i class="ti ti-x icon"></i>
+        </button>
+      </header>
+
+      <form class="dialog__form" id="settings-form" method="dialog">
+        <div class="form-row form-row--stack">
+          <label for="settings-world">Название мира</label>
+          <input class="control" id="settings-world" type="text" maxlength="60" />
+        </div>
+
+        <div class="form-row form-row--stack">
+          <label for="settings-map">Название текущей карты</label>
+          <input class="control" id="settings-map" type="text" maxlength="40" />
+        </div>
+
+        <label class="check">
+          <input type="checkbox" id="settings-labels" />
+          <span>Показывать названия объектов на карте</span>
+        </label>
+
+        <button class="btn btn--primary" type="submit">Готово</button>
+      </form>
+    </dialog>
+  </body>
+</html>

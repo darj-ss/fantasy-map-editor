@@ -1,0 +1,139 @@
+@use 'vars' as *;
+
+// Левая панель инструментов
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: var(--sidebar-w);
+  min-width: var(--sidebar-w);
+  padding: 10px 8px;
+  overflow-y: auto;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+
+  &__tool {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 72px;
+    padding: 10px 4px 8px;
+    color: #dfe7f5;
+    text-align: center;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    transition:
+      background-color 0.15s var(--ease),
+      border-color 0.15s var(--ease);
+
+    .icon {
+      width: 30px;
+      height: 30px;
+    }
+
+    @include hover {
+      &:hover {
+        background: var(--panel-3);
+      }
+    }
+
+    // Активный инструмент — синяя подсветка
+    &--active,
+    &[data-action='toggle-legend'][aria-expanded='true'] {
+      background: #1b3a66;
+      border-color: var(--blue);
+    }
+  }
+
+  &__tool-name {
+    font-size: 12px;
+    line-height: 1.2;
+    overflow-wrap: break-word;
+  }
+
+  // Быстрые обозначения: сетка 2 × 3
+  &__quick {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    padding: 8px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+
+  // Невысокие окна: инструменты ужимаются, чтобы все поместились
+  @media (max-height: 860px) {
+    gap: 6px;
+    padding: 8px;
+
+    &__tool {
+      min-height: 58px;
+      padding: 6px 4px;
+      gap: 3px;
+
+      .icon {
+        width: 26px;
+        height: 26px;
+      }
+    }
+
+    &__quick {
+      padding: 4px;
+      gap: 2px;
+    }
+
+    .quick {
+      height: 30px;
+    }
+  }
+
+  @include md {
+    --sidebar-w: 64px;
+
+    padding: 8px 6px;
+
+    &__tool-name {
+      display: none;
+    }
+
+    &__tool {
+      min-height: 52px;
+      padding: 8px 0;
+    }
+
+    &__quick {
+      grid-template-columns: 1fr;
+    }
+  }
+}
+
+.quick {
+  display: grid;
+  place-items: center;
+  height: 36px;
+  color: #dfe7f5;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-s);
+
+  svg {
+    width: 26px;
+    height: 26px;
+  }
+
+  @include hover {
+    &:hover {
+      background: var(--panel-3);
+    }
+  }
+
+  &--active {
+    color: var(--green);
+    background: var(--green-soft);
+    border-color: var(--green);
+  }
+}

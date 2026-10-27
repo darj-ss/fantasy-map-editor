@@ -1,0 +1,16 @@
+{
+  "name": "fantasy-map-editor",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "watch": "sass --watch src/styles/main.scss src/style.css"
+  },
+  "devDependencies": {
+    "sass": "^1.106.1",
+    "vite": "^8.3.4"
+  }
+}

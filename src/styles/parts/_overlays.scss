@@ -1,0 +1,186 @@
+@use 'vars' as *;
+
+// Выпадающее меню мира
+.menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  min-width: 240px;
+  padding: 6px;
+  background: var(--panel);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+
+  &__item {
+    padding: 10px 12px;
+    font-size: 14px;
+    text-align: left;
+    background: transparent;
+    border: 0;
+    border-radius: var(--radius-s);
+
+    small {
+      margin-left: 6px;
+      color: var(--muted);
+    }
+
+    @include hover {
+      &:hover:not(:disabled) {
+        background: var(--panel-3);
+      }
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  }
+}
+
+// Результаты поиска
+.search__results {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 60;
+  padding: 6px;
+  background: var(--panel);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.search__item {
+  width: 100%;
+  padding: 9px 12px;
+  font-size: 14px;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-s);
+
+  @include hover {
+    &:hover {
+      background: var(--panel-3);
+    }
+  }
+}
+
+.search__empty {
+  padding: 9px 12px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+// Диалоги
+.dialog {
+  width: min(520px, 92vw);
+  max-height: 80vh;
+  padding: 0;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--border-strong);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+
+  &::backdrop {
+    background: rgba(3, 8, 16, 0.65);
+  }
+
+  &[open] {
+    display: flex;
+    flex-direction: column;
+  }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px 16px 12px 22px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  &__title {
+    font-size: 19px;
+    font-weight: 600;
+  }
+
+  &__list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px 22px 22px;
+    overflow-y: auto;
+  }
+
+  &__entry {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: 100%;
+    padding: 10px 14px;
+    font-size: 14px;
+    text-align: left;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+
+    @include hover {
+      &:hover {
+        background: var(--panel-3);
+      }
+    }
+  }
+
+  &__where {
+    font-size: 12.5px;
+    color: var(--muted);
+  }
+
+  &__empty {
+    font-size: 14px;
+    color: var(--muted);
+  }
+
+  &__form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 20px 22px 22px;
+  }
+}
+
+.menu__item--danger {
+  color: var(--danger);
+}
+
+.dialog__text {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #cfd9ea;
+}
+
+.dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.btn--danger {
+  color: #fff;
+  background: #8a2f2f;
+  border-color: var(--danger);
+
+  @include hover {
+    &:hover:not(:disabled) {
+      background: #a13838;
+    }
+  }
+}

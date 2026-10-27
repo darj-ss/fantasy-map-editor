@@ -1,0 +1,584 @@
+@use 'vars' as *;
+
+.workspace {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.map-editor {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+
+  &__canvas {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    background: #08111f;
+
+    // Курсор зависит от инструмента (data-tool ставит JS)
+    &[data-tool='hand'] {
+      cursor: grab;
+    }
+
+    &[data-tool='brush'],
+    &[data-tool='symbol'],
+    &[data-tool='ruler'] {
+      cursor: crosshair;
+    }
+
+    &[data-tool='text'] {
+      cursor: text;
+    }
+
+    &.is-panning,
+    .is-space & {
+      cursor: grabbing;
+    }
+
+    &.is-dragging {
+      cursor: move;
+    }
+  }
+
+  &__svg {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+    user-select: none;
+    cursor: inherit;
+    // background: url(../../public/images/bg.jpg) center / cover no-repeat;
+    background-color: #efdecd;
+  }
+}
+
+// Отмена / повтор / удаление поверх карты
+.map-actions {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 10;
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: rgba(16, 28, 49, 0.94);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+
+  &__btn {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    color: var(--text);
+    background: transparent;
+    border: 0;
+    border-radius: var(--radius-s);
+
+    @include hover {
+      &:hover:not(:disabled) {
+        background: var(--panel-3);
+      }
+    }
+
+    &:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    &--danger {
+      @include hover {
+        &:hover:not(:disabled) {
+          color: var(--danger);
+        }
+      }
+    }
+  }
+}
+
+// Подсказка режима (появляется только когда выбран рабочий инструмент)
+.map-hint {
+  position: absolute;
+  bottom: 14px;
+  left: 14px;
+  z-index: 10;
+  display: none;
+  max-width: min(520px, calc(100% - 28px));
+  padding: 9px 14px;
+  font-size: 13.5px;
+  color: var(--text);
+  background: rgba(16, 28, 49, 0.94);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  pointer-events: none;
+
+  &--visible {
+    display: block;
+  }
+}
+
+// Всплывающие панели: кисть и условные обозначения
+.flyout {
+  position: absolute;
+  top: 70px;
+  left: 14px;
+  z-index: 12;
+  width: 232px;
+  padding: 14px;
+  background: rgba(16, 28, 49, 0.97);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+
+  &__title {
+    margin-bottom: 10px;
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  &__swatches {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  &__sizes {
+    display: flex;
+    gap: 6px;
+    margin-top: 12px;
+  }
+
+  &--legend {
+    width: min(320px, calc(100% - 28px));
+    max-height: calc(100% - 90px);
+    overflow-y: auto;
+  }
+}
+
+// ---------- Кисть: свотчи и свой цвет ----------
+
+.swatch {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  font-size: 13px;
+  text-align: left;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-s);
+
+  &__color {
+    width: 20px;
+    height: 20px;
+    flex: none;
+    border-radius: 5px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+  }
+
+  &[aria-pressed='true'] {
+    background: #1b3a66;
+    border-color: var(--blue);
+  }
+
+  // Крестик удаления — только у кастомных цветов
+  &__remove {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    display: grid;
+    place-items: center;
+    width: 16px;
+    height: 16px;
+    padding: 0;
+    font-size: 13px;
+    line-height: 1;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.55);
+    border: 0;
+    border-radius: 50%;
+    opacity: 0;
+    transition: opacity 0.12s var(--ease);
+  }
+
+  // Показываем крестик при наведении на свотч или при фокусе
+  &:hover &__remove,
+  &__remove:focus-visible {
+    opacity: 1;
+  }
+}
+
+.brush-add {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+
+  &__color {
+    width: 34px;
+    height: 34px;
+    padding: 2px;
+    background: var(--bg);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-s);
+    cursor: pointer;
+  }
+
+  &__name {
+    min-width: 0;
+    height: 34px;
+    padding: 0 10px;
+    font-size: 14px;
+    background: var(--bg);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-s);
+
+    &:focus {
+      outline: none;
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px var(--blue-soft);
+    }
+  }
+
+  &__save {
+    grid-column: 1 / -1;
+    min-height: 32px;
+    font-size: 13px;
+  }
+}
+
+.chip {
+  flex: 1;
+  padding: 6px 0;
+  font-size: 13px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-s);
+
+  &[aria-pressed='true'] {
+    background: #1b3a66;
+    border-color: var(--blue);
+  }
+}
+
+.legend {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  &__item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 6px 8px;
+    text-align: left;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--radius-s);
+
+    @include hover {
+      &:hover {
+        background: var(--panel-3);
+      }
+    }
+
+    &[aria-pressed='true'] {
+      background: #1b3a66;
+      border-color: var(--blue);
+    }
+  }
+
+  &__name {
+    display: block;
+    font-size: 14px;
+  }
+
+  &__note {
+    display: block;
+    font-size: 12px;
+    color: var(--muted);
+  }
+}
+
+// Значок обозначения в легенде: светлый на тёмной панели
+.symbol-preview {
+  width: 32px;
+  height: 32px;
+  flex: none;
+
+  .map-object__marker {
+    fill: #e8eef8;
+    stroke: none;
+  }
+
+  // Контурные значки — как на карте
+  &--triangle .map-object__marker,
+  &--square .map-object__marker,
+  &--peace .map-object__marker {
+    fill: none;
+    stroke: #e8eef8;
+    stroke-width: 2.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  &__line {
+    fill: none;
+    stroke: #e8eef8;
+    stroke-width: 2.4;
+    stroke-linecap: round;
+
+    &--dashed {
+      stroke-dasharray: 6 4;
+    }
+  }
+}
+
+// Подсказка при наведении
+.map-tooltip {
+  position: absolute;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 260px;
+  padding: 8px 12px;
+  font-size: 13.5px;
+  color: #fff;
+  background: #0b1527;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-s);
+  box-shadow: var(--shadow);
+  pointer-events: none;
+
+  strong {
+    font-weight: 600;
+    font-size: 15px;
+  }
+
+  span {
+    color: #c3d0e6;
+  }
+}
+
+// Колонка «Карты» и «Масштаб»
+.map-side {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: var(--side-w);
+  min-width: var(--side-w);
+  padding: 12px 10px;
+  overflow-y: auto;
+  background: var(--panel);
+  border-left: 1px solid var(--border);
+
+  .maps-hidden & {
+    display: none;
+  }
+
+  &__title {
+    margin-bottom: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #dfe7f5;
+  }
+
+  &__section + &__section {
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+
+  &__zoom {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+
+    .map-side__title {
+      align-self: flex-start;
+      margin-bottom: 0;
+    }
+  }
+
+  &__hints {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+
+  @include xl {
+    --side-w: 152px;
+  }
+
+  @include md {
+    --side-w: 96px;
+  }
+
+  // На телефоне колонка выезжает поверх карты (кнопка «Карта» слева)
+  @include sm {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 15;
+    box-shadow: var(--shadow);
+  }
+}
+
+.maps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+
+  &__item {
+    width: 100%;
+    height: 38px;
+    padding: 0 10px;
+    font-size: 14px;
+    text-align: left;
+    color: var(--text);
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-s);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    @include hover {
+      &:hover {
+        background: var(--panel-3);
+      }
+    }
+
+    &[aria-current='true'] {
+      color: #fff;
+      background: var(--green-deep);
+      border-color: var(--green);
+    }
+  }
+}
+
+.maps-add {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 38px;
+  color: var(--text);
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-s);
+
+  @include hover {
+    &:hover {
+      background: var(--panel-3);
+    }
+  }
+}
+
+.zoom-btn {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  color: var(--text);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-s);
+
+  @include hover {
+    &:hover {
+      background: var(--panel-3);
+    }
+  }
+}
+
+// Вертикальный ползунок масштаба: вверх — крупнее
+.zoom-slider {
+  width: 24px;
+  height: 150px;
+  margin: 0;
+  writing-mode: vertical-lr;
+  direction: rtl;
+  accent-color: var(--blue);
+}
+
+.hint-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--muted);
+
+  .icon {
+    width: 22px;
+    height: 22px;
+  }
+
+  p {
+    font-size: 11px;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+  }
+
+  @include md {
+    p {
+      display: none;
+    }
+  }
+}
+
+// Узкая полоска со стрелкой — сворачивает панель свойств
+.props-toggle {
+  display: grid;
+  place-items: start center;
+  width: 28px;
+  min-width: 28px;
+  padding-top: 14px;
+  color: var(--muted);
+  background: var(--panel);
+  border: 0;
+  border-left: 1px solid var(--border);
+
+  .props-collapsed & .icon {
+    transform: rotate(180deg);
+  }
+
+  @include hover {
+    &:hover {
+      color: var(--text);
+      background: var(--panel-2);
+    }
+  }
+
+  @include xl {
+    position: absolute;
+    top: 0;
+    right: min(var(--props-w), 100%);
+    z-index: 31;
+    height: 56px;
+    border: 1px solid var(--border);
+    border-right: 0;
+    border-radius: var(--radius-s) 0 0 var(--radius-s);
+
+    .props-collapsed & {
+      right: 0;
+    }
+  }
+}

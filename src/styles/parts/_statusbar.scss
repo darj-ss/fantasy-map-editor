@@ -1,0 +1,78 @@
+.statusbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 18px;
+  font-size: 14px;
+  color: var(--muted);
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+
+  &__left,
+  &__right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    white-space: nowrap;
+  }
+
+  &__right {
+    font-variant-numeric: tabular-nums;
+    gap: 14px;
+  }
+
+  &__sep {
+    opacity: 0.6;
+  }
+
+  #status-zoom {
+    cursor: default;
+  }
+
+  .icon-btn[aria-pressed='true'] {
+    color: var(--yellow);
+  }
+
+  @media (max-width: 576px) {
+    padding: 0 10px;
+    font-size: 12.5px;
+
+    #status-size,
+    &__sep {
+      display: none;
+    }
+  }
+}
+
+// Индикатор сохранения в браузере
+.save-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+
+  &__dot {
+    width: 8px;
+    height: 8px;
+    background: var(--green);
+    border-radius: 50%;
+  }
+
+  &[data-state='saving'] &__dot {
+    background: var(--yellow);
+  }
+
+  &[data-state='error'] {
+    color: var(--danger);
+  }
+
+  &[data-state='error'] &__dot {
+    background: var(--danger);
+  }
+
+  @media (max-width: 576px) {
+    #save-state-text {
+      display: none;
+    }
+  }
+}

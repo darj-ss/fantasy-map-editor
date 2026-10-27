@@ -1,0 +1,114 @@
+@use 'vars' as *;
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  min-width: 360px;
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--text);
+  background-color: var(--bg);
+  overflow: hidden; // редактор занимает весь экран
+  -webkit-font-smoothing: antialiased;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+ul {
+  @include resetList;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+// Иконки: контурные по умолчанию, --fill — закрашенные
+.icon {
+  font-size: 1.5rem;
+  width: 22px;
+  height: 22px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+
+  &--fill {
+    fill: currentColor;
+    stroke: none;
+  }
+}
+
+.app {
+  display: grid;
+  grid-template-rows: var(--header-h) minmax(0, 1fr) var(--status-h);
+  height: 100vh;
+  height: 100dvh;
+}
+
+.editor-layout {
+  position: relative;
+  display: flex;
+  min-height: 0;
+}
+
+// Аккуратные полосы прокрутки в тёмной теме
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+// Пользовательские цвета ландшафта: клетки карты и образцы в панели кисти
+.terrain {
+  &--water {
+    fill: var(--terrain-water);
+    background: var(--terrain-water);
+  }
+  &--meadow {
+    fill: var(--terrain-meadow);
+    background: var(--terrain-meadow);
+  }
+  &--forest {
+    fill: var(--terrain-forest);
+    background: var(--terrain-forest);
+  }
+  &--sand {
+    fill: var(--terrain-sand);
+    background: var(--terrain-sand);
+  }
+  &--mountain {
+    fill: var(--terrain-mountain);
+    background: var(--terrain-mountain);
+  }
+  &--snow {
+    fill: var(--terrain-snow);
+    background: var(--terrain-snow);
+  }
+}

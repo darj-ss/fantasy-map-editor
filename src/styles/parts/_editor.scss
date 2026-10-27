@@ -1,0 +1,217 @@
+// Всё, что рисуется внутри SVG-карты: клетки, сетка, объекты, линии, линейка.
+
+.terrain {
+  shape-rendering: crispEdges;
+}
+
+.map-editor__grid {
+  pointer-events: none;
+}
+
+.map-editor__grid-line {
+  stroke: rgba(3, 16, 28, 0.5);
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+
+// ---------- Точечные объекты ----------
+.map-object {
+  --ink: #0b1220;
+
+  cursor: pointer;
+  outline: none;
+
+  &__hit {
+    fill: transparent;
+  }
+
+  // Кольцо выделения: белый пунктир с тенью, виден на любом фоне
+  &__ring {
+    display: none;
+    fill: none;
+    stroke: #fff;
+    stroke-width: 2.5;
+    stroke-dasharray: 6 5;
+    filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.9));
+  }
+
+  &--selected &__ring {
+    display: block;
+  }
+
+  &:focus-visible &__ring,
+  &:hover &__ring {
+    display: block;
+    opacity: 0.55;
+  }
+
+  &--selected:hover &__ring {
+    opacity: 1;
+  }
+
+  // Базовый значок: тёмная заливка со светлой обводкой для читаемости
+  &__marker {
+    fill: var(--obj-color, var(--ink));
+    stroke: rgba(255, 255, 255, 0.8);
+    stroke-width: 1.5;
+    paint-order: stroke;
+    stroke-linejoin: round;
+  }
+
+  // Буквы (Г, Б, С, К, И, Я, Н)
+  text#{&}__marker,
+  text.map-object__marker {
+    font-family: var(--font);
+    font-size: 24px;
+    font-weight: 800;
+    stroke-width: 3.5;
+  }
+
+  // Город: белый кружок, у выбранного — тёмный
+  &--city &__marker {
+    fill: #fff;
+    stroke: var(--obj-color, var(--ink));
+    stroke-width: 3.5;
+    paint-order: normal;
+  }
+
+  &--city#{&}--selected &__marker {
+    fill: var(--obj-color, var(--ink));
+    stroke: #fff;
+  }
+
+  // Пещеры и храм големов — контурные фигуры
+  &--cave &__marker,
+  &--golem-temple &__marker {
+    fill: transparent;
+    stroke: var(--obj-color, var(--ink));
+    stroke-width: 3.5;
+    paint-order: normal;
+  }
+
+  // Цветные деревья — знак мира
+  &--peace-trees &__marker {
+    fill: none;
+    stroke: var(--obj-color, #c026d3);
+    stroke-width: 3;
+    stroke-linecap: round;
+    paint-order: normal;
+  }
+
+  // Подписи под объектами (включаются в настройках мира)
+  &__label {
+    display: none;
+    font-family: var(--font);
+    font-size: 15px;
+    font-weight: 600;
+    fill: #fff;
+    stroke: rgba(5, 15, 30, 0.9);
+    stroke-width: 4;
+    paint-order: stroke;
+    stroke-linejoin: round;
+    pointer-events: none;
+  }
+
+  // Текст на карте — отдельный вид объекта
+  &__text {
+    font-family: var(--font);
+    font-size: 22px;
+    font-weight: 700;
+    fill: var(--obj-color, #fff);
+    stroke: rgba(5, 15, 30, 0.9);
+    stroke-width: 5;
+    paint-order: stroke;
+    stroke-linejoin: round;
+    text-anchor: middle;
+  }
+
+  &--text &__ring,
+  &--text &__hit {
+    display: none;
+  }
+
+  &--text#{&}--selected &__text {
+    stroke: var(--blue);
+    stroke-width: 6;
+  }
+}
+
+.map-editor__svg--labels .map-object__label {
+  display: block;
+}
+
+// ---------- Линии ----------
+.map-object--line {
+  .map-object__hit-line {
+    fill: none;
+    stroke: transparent;
+    stroke-width: 18;
+    stroke-linecap: round;
+    pointer-events: stroke;
+  }
+
+  .map-object__line {
+    fill: none;
+    stroke: var(--obj-color, var(--ink));
+    stroke-width: var(--line-width, 2);
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    pointer-events: none;
+  }
+
+  &.map-object--dashed .map-object__line {
+    stroke-dasharray: calc(var(--line-width, 2) * 3.2) calc(var(--line-width, 2) * 2.4);
+  }
+
+  &.map-object--selected .map-object__line {
+    filter: drop-shadow(0 0 3px #fff) drop-shadow(0 0 5px var(--blue));
+  }
+
+  &:hover .map-object__line {
+    filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.8));
+  }
+}
+
+// ---------- Временные элементы ----------
+.draw-preview {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.9));
+
+  &--dashed {
+    stroke-dasharray: 9 7;
+  }
+}
+
+.brush-preview {
+  fill: rgba(255, 255, 255, 0.28);
+  stroke: #fff;
+  stroke-width: 2;
+}
+
+.ruler {
+  &__line {
+    stroke: var(--yellow);
+    stroke-width: 3;
+    stroke-dasharray: 9 6;
+  }
+
+  &__dot {
+    fill: var(--yellow);
+    stroke: var(--ink);
+    stroke-width: 2;
+  }
+
+  &__label {
+    font-family: var(--font);
+    font-size: 17px;
+    font-weight: 700;
+    fill: #fff;
+    stroke: var(--ink);
+    stroke-width: 5;
+    paint-order: stroke;
+  }
+}

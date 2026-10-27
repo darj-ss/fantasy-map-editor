@@ -1,0 +1,107 @@
+// Миксины
+@mixin resetList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@mixin hover {
+  @media (hover: hover) and (pointer: fine) {
+    @content;
+  }
+}
+
+@mixin xs {
+  @media (max-width: 380px) {
+    @content;
+  }
+}
+
+@mixin sm {
+  @media (max-width: 576px) {
+    @content;
+  }
+}
+
+@mixin md {
+  @media (max-width: 768px) {
+    @content;
+  }
+}
+
+@mixin lg {
+  @media (max-width: 992px) {
+    @content;
+  }
+}
+
+@mixin xl {
+  @media (max-width: 1200px) {
+    @content;
+  }
+}
+
+@mixin xxl {
+  @media (max-width: 1400px) {
+    @content;
+  }
+}
+
+
+:root {
+  // Интерфейс
+  --bg: #0b1424;
+  --panel: #101c31;
+  --panel-2: #13233d;
+  --panel-3: #182c4a;
+  --border: #223656;
+  --border-strong: #2f4a74;
+  --text: #e8eef8;
+  --muted: #8fa3c0;
+  --blue: #4c8dff;
+  --blue-soft: rgba(76, 141, 255, 0.18);
+  --green: #1fb774;
+  --green-deep: #17794f;
+  --green-soft: rgba(31, 183, 116, 0.16);
+  --danger: #ef6b6b;
+  --yellow: #ffd166;
+  --ink: #0b1220;
+
+  // --bg: #0b1424;
+  // --panel: #101c31;
+  // --panel-2: #13233d;
+  // --panel-3: #182c4a;
+  // --border: #223656;
+  // --border-strong: #2f4a74;
+  // --text: #e8eef8;
+  // --muted: #8fa3c0;
+  // --blue: #4c8dff;
+  // --blue-soft: rgba(76, 141, 255, 0.18);
+  // --green: #1fb774;
+  // --green-deep: #17794f;
+  // --green-soft: rgba(31, 183, 116, 0.16);
+  // --danger: #ef6b6b;
+  // --yellow: #ffd166;
+  // --ink: #0b1220;
+  // Ландшафт карты
+  --terrain-water: #0e7f9b;
+  --terrain-meadow: #3fc03a;
+  --terrain-forest: #1d7a3b;
+  --terrain-sand: #dcb862;
+  --terrain-mountain: #7d8594;
+  --terrain-snow: #e6eef6;
+
+  // Размеры
+  --header-h: 64px;
+  --status-h: 44px;
+  --sidebar-w: 120px;
+  --side-w: 152px;
+  --props-w: 372px;
+
+  --radius: 10px;
+  --radius-s: 8px;
+  --shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+
+  --font: 'Inter', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+}
