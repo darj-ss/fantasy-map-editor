@@ -114,6 +114,11 @@ export const removeCustomTerrain = (id) => {
   }
 
   emit('terrains:change');
+
+  // Перекрашенные клетки нужно записать в облако (если мастер вошёл)
+  if (state.isAdmin) {
+    scheduleSave();
+  }
 };
 
 // ---------- Сборка данных ----------
@@ -408,7 +413,7 @@ const readCells = (map) => {
     fail('ландшафт карты повреждён');
   }
 
-  return [...map.cells].map((char) => ids[parseInt(char, 36)] ?? 'water');
+    return [...map.cells].map((char) => ids[parseInt(char, 36)] ?? 'water');
 };
 
 const readView = (raw) => {
