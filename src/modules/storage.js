@@ -1,12 +1,11 @@
-// Сохранение мира: файл карты, файл всего мира и автосохранение в localStorage.
+// Сохранение мира: файл (экспорт/импорт) + облако Supabase (только активная карта).
 //
-// Формат файла — обычный JSON:
+// Формат файла — тот же, что был: обычный JSON.
 //   карта: { format, version, kind: 'map',   exportedAt, map:   { name, cols, rows, terrains, cells, lines, objects, view } }
 //   мир:   { format, version, kind: 'world', exportedAt, world: { name, showLabels, activeIndex, maps: [ …как map… ] } }
-// Поле version нужно, чтобы в будущем можно было читать старые файлы.
 //
-// terrains — массив id ('water', 'meadow', …). Для кастомных цветов кисти
-// вместо строки пишется объект { id, label, color }, чтобы файл был самодостаточным.
+// В облаке: таблица maps (id uuid, name, cells, view) и objects (id, map_id, symbol, data).
+// Синхронизируется только активная карта — этого достаточно для «мастер + зрители».
 import { GRID, SYMBOLS, TERRAINS, RECORD_CATEGORIES, ZOOM, isCustomTerrain } from './config.js';
 import { state } from './state.js';
 import { emit, on } from './bus.js';
@@ -14,13 +13,12 @@ import { layers, canvas, createBlankCells, showCells } from './map.js';
 import { createObject, createLine, getPoints, getRecords, isLine } from './objects.js';
 import { addMapsFromData, replaceWorld, getView } from './maps.js';
 import { askChoice } from './dialogs.js';
+import { loadMaps, upsertMap, replaceObjects, getSession } from './api.js';
 
 const FORMAT = 'fantasy-map-editor';
 const VERSION = 1;
 
-const STORAGE_KEY = 'fantasy-map-editor:world';
-const BACKUP_KEY = `${STORAGE_KEY}:corrupt`; // сюда уходит копия, если сохранение не удалось прочитать
-const CUSTOM_TERRAINS_KEY = 'fantasy-map-editor:terrains'; // кастомные цвета кисти
+const CUSTOM_TERRAINS_KEY = 'fantasy-map-editor:terrains'; // кастомные цвета кисти (локально)
 const SAVE_DELAY = 600; // мс: не пишем на каждое движение мыши
 
 const MAP_W = GRID.cols * GRID.cell;
@@ -43,7 +41,6 @@ const LIMITS = {
 
 // ---------- Свои цвета кисти ----------
 
-// Сохранить кастомные цвета в localStorage (базовые не пишем — они в коде)
 export const persistCustomTerrains = () => {
   const custom = TERRAINS.filter((t) => t.custom);
 
@@ -54,7 +51,6 @@ export const persistCustomTerrains = () => {
   }
 };
 
-// Прочитать кастомные цвета при запуске. Вызывается до initTerrain / initToolbar
 export const loadCustomTerrains = () => {
   let list;
 
@@ -92,7 +88,6 @@ export const loadCustomTerrains = () => {
   });
 };
 
-// Удалить кастомный цвет: клетки перекрашиваем в воду, чистим состояние, эмитим событие
 export const removeCustomTerrain = (id) => {
   const index = TERRAINS.findIndex((t) => t.id === id && t.custom);
 
@@ -142,7 +137,6 @@ const serializeNode = (el) => {
     data.tooltipOff = true;
   }
 
-  // Сохраняем только непустые разделы записей
   const records = {};
 
   Object.entries(getRecords(el)).forEach(([id, list]) => {
@@ -165,14 +159,12 @@ const serializeNode = (el) => {
   return data;
 };
 
-// Ландшафт одной строкой: по символу на клетку (номер ландшафта в системе счисления 36)
 const encodeCells = (cells) => {
   const ids = TERRAINS.map((t) => t.id);
 
   return cells.map((id) => ids.indexOf(id).toString(36)).join('');
 };
 
-// У текущей карты объекты лежат на холсте, у остальных — в сохранённых списках
 const nodesOf = (map) =>
   map === state.map
     ? {
@@ -256,7 +248,7 @@ export const exportWorld = () => {
   });
 };
 
-// ---------- Проверка данных ----------
+// ---------- Проверка данных (для импорта файла) ----------
 
 const fail = (message) => {
   throw new Error(message);
@@ -312,7 +304,6 @@ const readRecords = (value) => {
   return records;
 };
 
-// Общие свойства точки и линии
 const readProps = (raw) => {
   const props = {
     name: readText(raw.name, LIMITS.name, 'name'),
@@ -325,7 +316,6 @@ const readProps = (raw) => {
     props.tooltipOff = '1';
   }
 
-  // Неверный цвет просто игнорируем — объект получит цвет по умолчанию
   if (typeof raw.color === 'string' && /^#[0-9a-f]{6}$/i.test(raw.color)) {
     props.color = raw.color;
   }
@@ -380,8 +370,6 @@ const buildLine = (raw) => {
   return createLine(raw.symbol, points, readProps(raw));
 };
 
-// Строка или объект { id, label, color } → id в TERRAINS.
-// Если объекта-кастома у нас нет — регистрируем его, чтобы карта не потеряла цвет.
 const ensureTerrain = (entry) => {
   if (typeof entry === 'string') {
     return TERRAINS.some((t) => t.id === entry) ? entry : fail('в файле неизвестный вид ландшафта');
@@ -420,10 +408,9 @@ const readCells = (map) => {
     fail('ландшафт карты повреждён');
   }
 
-  return [...map.cells].map((char) => ids[parseInt(char, 36)] ?? fail('ландшафт карты повреждён'));
+  return [...map.cells].map((char) => ids[parseInt(char, 36)] ?? 'water');
 };
 
-// Положение камеры необязательно: если оно испорчено, просто берём стандартное
 const readView = (raw) => {
   if (
     !isObject(raw) ||
@@ -439,7 +426,6 @@ const readView = (raw) => {
   };
 };
 
-// Одна карта: проверяем и сразу строим объекты (на экран они пока не попадают)
 const parseMap = (map) => {
   if (!isObject(map)) {
     fail('в файле нет данных карты');
@@ -467,7 +453,6 @@ const parseMap = (map) => {
   };
 };
 
-// Текст файла → { kind: 'map', map } или { kind: 'world', ... }. При ошибке бросает Error с понятным текстом
 export const parseFile = (text) => {
   let data;
 
@@ -515,9 +500,8 @@ export const parseFile = (text) => {
   return fail('в файле нет данных карты');
 };
 
-// ---------- Загрузка в редактор ----------
+// ---------- Импорт из файла ----------
 
-// Если карта с таким названием уже есть — добавляем номер: «Остров (2)»
 const uniqueName = (name, taken) => {
   const base = name || 'Импортированная карта';
   let candidate = base;
@@ -533,7 +517,6 @@ const uniqueName = (name, taken) => {
   return candidate;
 };
 
-// Заменить мир целиком и обновить настройки мира
 const applyWorld = (world) => {
   replaceWorld(world.maps, world.activeIndex);
 
@@ -557,7 +540,6 @@ export const importFromFile = async (file) => {
       fail('файл слишком большой (больше 5 МБ)');
     }
 
-    // Сначала проверяем весь файл. Текущий мир не трогаем, пока не убедились, что файл целый
     const parsed = parseFile(await file.text());
 
     if (parsed.kind === 'map') {
@@ -567,7 +549,7 @@ export const importFromFile = async (file) => {
           name: parsed.map.name || file.name.replace(/\.(fantasymap\.)?json$/i, ''),
         },
       ]);
-      emit('terrains:change'); // новые кастомы из файла — обновить палитру кисти
+      emit('terrains:change');
       emit('hint:flash', { text: `Карта «${state.map.name}» загружена из файла.`, ms: 5000 });
       return;
     }
@@ -584,11 +566,11 @@ export const importFromFile = async (file) => {
 
     if (choice === 'add') {
       addMaps(parsed.maps);
-      emit('terrains:change'); // новые кастомы из файла — обновить палитру кисти
+      emit('terrains:change');
       emit('hint:flash', { text: `Добавлено карт: ${parsed.maps.length}.`, ms: 5000 });
     } else if (choice === 'replace') {
       applyWorld(parsed);
-      emit('terrains:change'); // новые кастомы из файла — обновить палитру кисти
+      emit('terrains:change');
       emit('hint:flash', { text: `Мир «${state.worldName}» загружен из файла.`, ms: 5000 });
     } else {
       emit('hint:flash', 'Загрузка отменена.');
@@ -599,11 +581,12 @@ export const importFromFile = async (file) => {
   }
 };
 
-// Пустой мир с одной картой
+// ---------- Новый мир ----------
+
 export const startNewWorld = async () => {
   const choice = await askChoice({
     title: 'Начать новый мир?',
-    text: 'Текущий мир будет удалён, в том числе из автосохранения браузера. Если он нужен, сначала сохрани его в файл.',
+    text: 'Текущий мир будет заменён пустой картой. Если он нужен, сначала сохрани его в файл.',
     buttons: [
       { label: 'Начать новый мир', value: 'new', variant: 'danger' },
       { label: 'Отмена', value: null },
@@ -624,20 +607,97 @@ export const startNewWorld = async () => {
   });
 };
 
-// ---------- Автосохранение в localStorage ----------
+// ---------- Облако: загрузка и сохранение ----------
 
-let ready = false; // пока не загрузили сохранённый мир, писать нельзя: иначе затрём его тестовой картой
+let ready = false;
 let timer = 0;
-let dirty = false; // были изменения (в том числе положение камеры), которые ещё не записаны
+let dirty = false;
 let errorShown = false;
 
 const setSaveState = (value) => emit('save:state', value);
 
-const saveNow = () => {
+// Превращаем строку из Supabase в карту редактора
+const mapFromCloud = (row, objects) => {
+  const raw = {
+    name: row.name,
+    cols: GRID.cols,
+    rows: GRID.rows,
+    terrains: TERRAINS.map((t) =>
+      isCustomTerrain(t.id) ? { id: t.id, label: t.label, color: t.color } : t.id,
+    ),
+    cells: row.cells,
+    lines: objects.filter((o) => o.symbol?.endsWith('-line')).map((o) => o.data),
+    objects: objects.filter((o) => !o.symbol?.endsWith('-line')).map((o) => o.data),
+    view: row.view,
+  };
+
+  const parsed = parseMap(raw);
+
+  return {
+    id: row.id,
+    name: row.name,
+    cells: parsed.cells,
+    nodes: parsed.nodes,
+    view: parsed.view,
+  };
+};
+
+export const loadWorldFromCloud = async () => {
+  try {
+    const rows = await loadMaps();
+
+    if (rows.length === 0) {
+      // Пустая база — создаём одну карту и сохраняем её
+      applyWorld({
+        name: 'Новый мир',
+        showLabels: false,
+        activeIndex: 0,
+        maps: [
+          { name: 'Карта 1', cells: createBlankCells('water'), nodes: { lines: [], objects: [] } },
+        ],
+      });
+
+      // Дадим switchMap отработать, потом сохраним
+      setTimeout(() => saveNow(), 100);
+      ready = true;
+      return;
+    }
+
+    const maps = rows.map((row) => mapFromCloud(row, row.objects));
+    applyWorld({
+      name: 'Новый мир',
+      showLabels: false,
+      activeIndex: 0,
+      maps,
+    });
+  } catch (error) {
+    console.error(error);
+    emit('hint:flash', { text: `Не удалось загрузить мир из облака: ${error.message}`, ms: 6000 });
+  }
+
+  ready = true;
+};
+
+const saveNow = async () => {
   timer = 0;
 
+  if (!state.map) {
+    return;
+  }
+
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(buildWorldExport()));
+    const data = buildMapData(state.map);
+
+    await upsertMap({
+      id: state.map.id,
+      name: data.name,
+      cells: data.cells,
+      view: data.view,
+    });
+
+    const allNodes = [...data.lines, ...data.objects];
+    await replaceObjects(state.map.id, allNodes);
+
     dirty = false;
     errorShown = false;
     setSaveState('saved');
@@ -645,12 +705,11 @@ const saveNow = () => {
     console.error(error);
     setSaveState('error');
 
-    // Сообщение показываем один раз, а не на каждое изменение
     if (!errorShown) {
       errorShown = true;
       emit('hint:flash', {
-        text: 'Не удалось сохранить в браузере: память заполнена или хранилище запрещено. Сохрани мир в файл через меню «Мир».',
-        ms: 9000,
+        text: 'Не удалось сохранить в облако. Проверь, что ты вошёл как мастер и соединение с интернетом есть.',
+        ms: 8000,
       });
     }
   }
@@ -667,7 +726,6 @@ const scheduleSave = () => {
   timer = setTimeout(saveNow, SAVE_DELAY);
 };
 
-// Если вкладку закрывают или скрывают раньше, чем сработала задержка, — записываем сразу
 const flushSave = () => {
   if (ready && (timer || dirty)) {
     clearTimeout(timer);
@@ -675,45 +733,7 @@ const flushSave = () => {
   }
 };
 
-// Вызывается один раз при запуске, после создания тестового мира
-export const restoreWorld = () => {
-  let raw = null;
-
-  try {
-    raw = localStorage.getItem(STORAGE_KEY);
-  } catch (error) {
-    console.error(error);
-    setSaveState('error');
-  }
-
-  if (raw) {
-    try {
-      const parsed = parseFile(raw);
-
-      if (parsed.kind !== 'world') {
-        fail('в хранилище лежит не мир');
-      }
-
-      applyWorld(parsed);
-    } catch (error) {
-      console.error(error);
-
-      // Не даём автосохранению молча затереть повреждённые данные: оставляем копию
-      try {
-        localStorage.setItem(BACKUP_KEY, raw);
-      } catch {
-        // места нет — копию сделать не удалось
-      }
-
-      emit('hint:flash', {
-        text: 'Сохранённый в браузере мир повреждён, поэтому открыт тестовый. Копия повреждённых данных осталась в браузере.',
-        ms: 9000,
-      });
-    }
-  }
-
-  ready = true;
-};
+// ---------- Запуск ----------
 
 export const initStorage = () => {
   const input = document.querySelector('#import-input');
@@ -721,7 +741,7 @@ export const initStorage = () => {
   input.addEventListener('change', () => {
     const [file] = input.files;
 
-    input.value = ''; // чтобы тот же файл можно было выбрать ещё раз
+    input.value = '';
 
     if (file) {
       importFromFile(file);
@@ -736,7 +756,6 @@ export const initStorage = () => {
   bind('export-world', exportWorld);
   bind('new-world', startNewWorld);
 
-  // Файл можно просто перетащить на карту
   canvas.addEventListener('dragover', (event) => {
     if (event.dataTransfer?.types.includes('Files')) {
       event.preventDefault();
@@ -752,12 +771,10 @@ export const initStorage = () => {
     }
   });
 
-  // Всё, что меняет мир, запускает отложенное сохранение
   ['history:change', 'object:change', 'map:change', 'settings:change'].forEach((name) =>
     on(name, scheduleSave),
   );
 
-  // Положение камеры сохраняем при закрытии вкладки, но не дёргаем запись на каждое движение
   on('view:change', () => {
     dirty = ready;
   });

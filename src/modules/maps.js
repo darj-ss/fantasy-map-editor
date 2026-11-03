@@ -8,6 +8,7 @@ import { createHistory } from './history.js';
 import { setTool } from './tools.js';
 import { buildSampleCells, buildSampleNodes } from './sample.js';
 import { askChoice } from './dialogs.js';
+import { deleteMap } from './api.js';
 
 const list = document.querySelector('#maps-list');
 const addButton = document.querySelector('#map-add');
@@ -24,7 +25,7 @@ const createMap = (name, cells, nodes = { lines: [], objects: [] }, view = defau
   counter += 1;
 
   return {
-    id: `map-${counter}`,
+    id: crypto.randomUUID(), // id карты = uuid (совпадает с id в Supabase)
     name: name || `Карта ${counter}`,
     cells,
     nodes,
@@ -104,6 +105,7 @@ export const addMap = () => {
   state.maps.push(map);
   switchMap(map);
 };
+
 export const deleteCurrentMap = async () => {
   const map = state.map;
 
@@ -137,11 +139,19 @@ export const deleteCurrentMap = async () => {
   state.map = null; // сохранять объекты удалённой карты уже не нужно
   switchMap(state.maps[Math.min(index, state.maps.length - 1)]); // соседняя карта
 
+  // Удалить из облака (не блокируем UI, ошибку только логируем)
+  deleteMap(map.id).catch((error) => console.error(error));
+
   emit('hint:flash', `Карта «${map.name}» удалена.`);
 };
+
 // Карты из файла: ландшафт и объекты уже готовы. Добавляем к текущему миру и открываем первую
 export const addMapsFromData = (items) => {
-  const created = items.map((item) => createMap(item.name, item.cells, item.nodes, item.view));
+  const created = items.map((item) => {
+    const map = createMap(item.name, item.cells, item.nodes, item.view);
+    if (item.id) map.id = item.id;
+    return map;
+  });
 
   state.maps.push(...created);
   switchMap(created[0]);
@@ -152,8 +162,12 @@ export const replaceWorld = (items, activeIndex = 0) => {
   deselect();
   setTool('select');
 
-  state.map = null; // сохранять объекты старой карты уже не нужно
-  state.maps = items.map((item) => createMap(item.name, item.cells, item.nodes, item.view));
+  state.map = null;
+  state.maps = items.map((item) => {
+    const map = createMap(item.name, item.cells, item.nodes, item.view);
+    if (item.id) map.id = item.id; // сохраняем id из облака, чтобы upsert обновлял ту же строку
+    return map;
+  });
 
   switchMap(state.maps[Math.min(Math.max(activeIndex, 0), state.maps.length - 1)]);
 };

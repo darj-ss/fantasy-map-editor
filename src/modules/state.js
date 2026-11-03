@@ -12,6 +12,8 @@ export const state = {
   locked: false, // карта заблокирована от правок
   showLabels: false, // подписи под объектами
 
+  isAdmin: false, // вошёл ли мастер — права на редактирование
+
   zoom: 100, // проценты
   view: { x: 0, y: 0, w: 1400, h: 900 }, // текущий viewBox
 };

@@ -13,6 +13,7 @@
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.35.0/dist/tabler-icons.min.css" />
     <title>Fantasy Map Editor</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script type="module" src="/src/main.js"></script>
   </head>
   <body>
@@ -123,7 +124,7 @@
             aria-label="Все важные места">
             <i class="ti ti-star-filled icon icon--fill"></i>
           </button>
-          <button
+                    <button
             class="header__icon"
             type="button"
             data-action="settings"
@@ -131,6 +132,16 @@
             aria-label="Настройки мира">
             <i class="ti ti-settings icon icon--fill"></i>
           </button>
+
+          <button
+            class="header__icon"
+            id="auth-button"
+            type="button"
+            title="Войти как мастер"
+            aria-label="Войти как мастер">
+            <i class="ti ti-login icon"></i>
+          </button>
+        </nav>
         </nav>
       </header>
 
@@ -646,6 +657,30 @@
         </label>
 
         <button class="btn btn--primary" type="submit">Готово</button>
+      </form>
+    </dialog>
+        <dialog class="dialog" id="auth-dialog" aria-labelledby="auth-title">
+      <header class="dialog__header">
+        <h2 class="dialog__title" id="auth-title">Вход для мастера</h2>
+        <button class="icon-btn" type="button" data-close aria-label="Закрыть">
+          <i class="ti ti-x icon"></i>
+        </button>
+      </header>
+
+      <form class="dialog__form" id="auth-form">
+        <div class="form-row form-row--stack">
+          <label for="auth-email">Email</label>
+          <input class="control" id="auth-email" type="email" autocomplete="username" required />
+        </div>
+
+        <div class="form-row form-row--stack">
+          <label for="auth-password">Пароль</label>
+          <input class="control" id="auth-password" type="password" autocomplete="current-password" required />
+        </div>
+
+        <p class="dialog__text" id="auth-error" hidden></p>
+
+        <button class="btn btn--primary" type="submit">Войти</button>
       </form>
     </dialog>
   </body>

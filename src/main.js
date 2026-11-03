@@ -9,7 +9,7 @@ import { initStatusbar } from './modules/statusbar.js';
 import { initTooltip } from './modules/tooltip.js';
 import { initShortcuts } from './modules/shortcuts.js';
 import { initMaps } from './modules/maps.js';
-import { initStorage, restoreWorld, loadCustomTerrains } from './modules/storage.js';
+import { initStorage, loadWorldFromCloud, loadCustomTerrains } from './modules/storage.js';
 
 // Свои цвета кисти из localStorage — до initTerrain и initToolbar, чтобы палитра их увидела
 loadCustomTerrains();
@@ -26,4 +26,4 @@ initTooltip();
 initShortcuts();
 initStorage();
 initMaps();
-restoreWorld(); // если в браузере есть сохранённый мир — загружаем его вместо тестового
+loadWorldFromCloud(); // асинхронно: загрузит карты из Supabase и заменит тестовый мир

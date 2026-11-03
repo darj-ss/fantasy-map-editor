@@ -50,6 +50,10 @@ export const setTool = (tool, symbol = null) => {
     emit('hint:flash', 'Карта заблокирована — сначала разблокируй её внизу справа.');
     return;
   }
+    if (needsEditing && !state.isAdmin) {
+      emit('hint:flash', 'Только мастер может редактировать карту.');
+      return;
+    }
 
   cancelDrawing();
   clearRuler();

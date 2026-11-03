@@ -5,8 +5,14 @@ import { on, emit } from './bus.js';
 import { centerOn } from './map.js';
 import { select, getTitle, getAllObjects, getRecords, getPoints, isLine, searchObjects } from './objects.js';
 import { renameCurrentMap } from './maps.js';
+import { signIn, signOut, getSession } from './api.js'; 
 
 const $ = (selector) => document.querySelector(selector);
+
+const authButton = $('#auth-button');
+const authDialog = $('#auth-dialog');
+const authForm = $('#auth-form');
+const authError = $('#auth-error');
 
 const menuButton = $('#world-menu-button');
 const menu = $('#world-menu');
@@ -210,4 +216,55 @@ export const initHeader = () => {
   });
 
   worldName.textContent = state.worldName;
+
+  // ---------- Вход мастера ----------
+
+  const applyAdmin = (isAdmin) => {
+    state.isAdmin = isAdmin;
+
+    authButton.title = isAdmin ? 'Выйти' : 'Войти как мастер';
+    authButton.setAttribute('aria-label', isAdmin ? 'Выйти' : 'Войти как мастер');
+    authButton.querySelector('.icon').className = `ti ${isAdmin ? 'ti-logout' : 'ti-login'} icon`;
+
+    document.body.classList.toggle('is-admin', isAdmin);
+    emit('admin:change');
+  };
+
+  const refreshSession = async () => {
+    const session = await getSession();
+    applyAdmin(Boolean(session));
+  };
+
+  authButton.addEventListener('click', async () => {
+    const session = await getSession();
+
+    if (session) {
+      await signOut();
+      await refreshSession();
+      emit('hint:flash', 'Вы вышли из режима мастера.');
+    } else {
+      authError.hidden = true;
+      authForm.reset();
+      authDialog.showModal();
+    }
+  });
+
+  authForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+
+    const email = $('#auth-email').value.trim();
+    const password = $('#auth-password').value;
+
+    try {
+      await signIn(email, password);
+      authDialog.close();
+      await refreshSession();
+      emit('hint:flash', 'Вы вошли как мастер. Редактирование доступно.');
+    } catch (error) {
+      authError.textContent = `Не удалось войти: ${error.message}`;
+      authError.hidden = false;
+    }
+  });
+
+  refreshSession();
 };
