@@ -42,7 +42,13 @@ export const loadMaps = async () => {
 export const upsertMap = async (map) => {
   const { data, error } = await db
     .from('maps')
-    .upsert({ id: map.id, name: map.name, cells: map.cells, view: map.view })
+    .upsert({
+      id: map.id,
+      name: map.name,
+      cells: map.cells,
+      view: map.view,
+      terrains: map.terrains,
+    })
     .select()
     .single();
   if (error) throw error;

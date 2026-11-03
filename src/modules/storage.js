@@ -622,15 +622,48 @@ let errorShown = false;
 const setSaveState = (value) => emit('save:state', value);
 
 // Превращаем строку из Supabase в карту редактора
+// Превращаем строку из Supabase в карту редактора.
+// Если в строке есть terrains (базовые + кастомные цвета), регистрируем недостающие
+// кастомы в глобальном TERRAINS — чтобы у гостя карта отрисовалась теми же цветами.
 const mapFromCloud = (row, objects) => {
+  // 1. Регистрируем кастомные цвета из облака, если их ещё нет локально
+  if (Array.isArray(row.terrains)) {
+    row.terrains.forEach((entry) => {
+      if (
+        entry &&
+        typeof entry === 'object' &&
+        typeof entry.id === 'string' &&
+        typeof entry.color === 'string' &&
+        /^#[0-9a-f]{6}$/i.test(entry.color) &&
+        !TERRAINS.some((t) => t.id === entry.id)
+      ) {
+        TERRAINS.push({
+          id: entry.id,
+          label: String(entry.label || 'Свой цвет').slice(0, 24),
+          color: entry.color.toLowerCase(),
+          custom: true,
+        });
+      }
+    });
+
+    persistCustomTerrains();
+  }
+
+  // 2. Собираем terrains для parseMap: если в облаке есть — берём оттуда,
+  // иначе строим из текущего TERRAINS
+  const terrains = Array.isArray(row.terrains) && row.terrains.length > 0
+    ? row.terrains
+    : TERRAINS.map((t) =>
+        isCustomTerrain(t.id) ? { id: t.id, label: t.label, color: t.color } : t.id,
+      );
+
+  // 3. Объекты из таблицы objects: линии и точки разделяем по symbol
   const raw = {
     name: row.name,
     cols: GRID.cols,
     rows: GRID.rows,
-    terrains: TERRAINS.map((t) =>
-      isCustomTerrain(t.id) ? { id: t.id, label: t.label, color: t.color } : t.id,
-    ),
-    cells: row.cells,
+    terrains,
+    cells: row.cells || encodeCells(createBlankCells('water')),
     lines: objects.filter((o) => o.symbol?.endsWith('-line')).map((o) => o.data),
     objects: objects.filter((o) => !o.symbol?.endsWith('-line')).map((o) => o.data),
     view: row.view,
@@ -698,6 +731,7 @@ const saveNow = async () => {
       name: data.name,
       cells: data.cells,
       view: data.view,
+      terrains: data.terrains,
     });
 
     const allNodes = [...data.lines, ...data.objects];
