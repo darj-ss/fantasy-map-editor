@@ -4,7 +4,8 @@
 //   карта: { format, version, kind: 'map',   exportedAt, map:   { name, cols, rows, terrains, cells, lines, objects, view } }
 //   мир:   { format, version, kind: 'world', exportedAt, world: { name, showLabels, activeIndex, maps: [ …как map… ] } }
 //
-// В облаке: таблица maps (id uuid, name, cells, view) и objects (id, map_id, symbol, data).
+// В облаке: таблица maps (id uuid, name, cells, view, terrains), objects (id, map_id, symbol, data)
+// и world (id=1, name, show_labels) — название мира и подписи.
 // Синхронизируется только активная карта — этого достаточно для «мастер + зрители».
 import { GRID, SYMBOLS, TERRAINS, RECORD_CATEGORIES, ZOOM, isCustomTerrain } from './config.js';
 import { state } from './state.js';
@@ -13,7 +14,7 @@ import { layers, canvas, createBlankCells, showCells } from './map.js';
 import { createObject, createLine, getPoints, getRecords, isLine } from './objects.js';
 import { addMapsFromData, replaceWorld, getView } from './maps.js';
 import { askChoice } from './dialogs.js';
-import { loadMaps, upsertMap, replaceObjects, getSession } from './api.js';
+import { loadMaps, upsertMap, replaceObjects, loadWorld, saveWorld } from './api.js';
 
 const FORMAT = 'fantasy-map-editor';
 const VERSION = 1;
@@ -413,7 +414,7 @@ const readCells = (map) => {
     fail('ландшафт карты повреждён');
   }
 
-    return [...map.cells].map((char) => ids[parseInt(char, 36)] ?? 'water');
+  return [...map.cells].map((char) => ids[parseInt(char, 36)] ?? 'water');
 };
 
 const readView = (raw) => {
@@ -526,7 +527,7 @@ const applyWorld = (world) => {
   replaceWorld(world.maps, world.activeIndex);
 
   state.worldName = world.name || 'Новый мир';
-  state.showLabels = world.showLabels;
+  state.showLabels = Boolean(world.showLabels);
   emit('world:settings');
   emit('settings:change');
 };
@@ -621,7 +622,6 @@ let errorShown = false;
 
 const setSaveState = (value) => emit('save:state', value);
 
-// Превращаем строку из Supabase в карту редактора
 // Превращаем строку из Supabase в карту редактора.
 // Если в строке есть terrains (базовые + кастомные цвета), регистрируем недостающие
 // кастомы в глобальном TERRAINS — чтобы у гостя карта отрисовалась теми же цветами.
@@ -651,11 +651,12 @@ const mapFromCloud = (row, objects) => {
 
   // 2. Собираем terrains для parseMap: если в облаке есть — берём оттуда,
   // иначе строим из текущего TERRAINS
-  const terrains = Array.isArray(row.terrains) && row.terrains.length > 0
-    ? row.terrains
-    : TERRAINS.map((t) =>
-        isCustomTerrain(t.id) ? { id: t.id, label: t.label, color: t.color } : t.id,
-      );
+  const terrains =
+    Array.isArray(row.terrains) && row.terrains.length > 0
+      ? row.terrains
+      : TERRAINS.map((t) =>
+          isCustomTerrain(t.id) ? { id: t.id, label: t.label, color: t.color } : t.id,
+        );
 
   // 3. Объекты из таблицы objects: линии и точки разделяем по symbol
   const raw = {
@@ -682,13 +683,13 @@ const mapFromCloud = (row, objects) => {
 
 export const loadWorldFromCloud = async () => {
   try {
-    const rows = await loadMaps();
+    const [rows, world] = await Promise.all([loadMaps(), loadWorld()]);
 
     if (rows.length === 0) {
-      // Пустая база — создаём одну карту и сохраняем её
+      // Пустая база — создаём одну карту и сохраняем её вместе с настройками мира
       applyWorld({
-        name: 'Новый мир',
-        showLabels: false,
+        name: world?.name || 'Новый мир',
+        showLabels: world?.show_labels || false,
         activeIndex: 0,
         maps: [
           { name: 'Карта 1', cells: createBlankCells('water'), nodes: { lines: [], objects: [] } },
@@ -702,9 +703,10 @@ export const loadWorldFromCloud = async () => {
     }
 
     const maps = rows.map((row) => mapFromCloud(row, row.objects));
+
     applyWorld({
-      name: 'Новый мир',
-      showLabels: false,
+      name: world?.name || 'Новый мир',
+      showLabels: world?.show_labels || false,
       activeIndex: 0,
       maps,
     });
@@ -736,6 +738,11 @@ const saveNow = async () => {
 
     const allNodes = [...data.lines, ...data.objects];
     await replaceObjects(state.map.id, allNodes);
+
+    // Название мира и подписи — только если мастер (RLS не пустит гостя)
+    if (state.isAdmin) {
+      await saveWorld(state.worldName, state.showLabels);
+    }
 
     dirty = false;
     errorShown = false;

@@ -71,3 +71,14 @@ export const replaceObjects = async (mapId, objects) => {
     .insert(objects.map((o) => ({ map_id: mapId, symbol: o.symbol, data: o })));
   if (error) throw error;
 };
+
+export const loadWorld = async () => {
+  const { data, error } = await db.from('world').select('*').eq('id', 1).maybeSingle();
+  if (error) throw error;
+  return data;
+};
+
+export const saveWorld = async (name, showLabels) => {
+  const { error } = await db.from('world').upsert({ id: 1, name, show_labels: showLabels });
+  if (error) throw error;
+};

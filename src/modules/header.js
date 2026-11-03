@@ -3,9 +3,17 @@ import { RECORD_CATEGORIES } from './config.js';
 import { state } from './state.js';
 import { on, emit } from './bus.js';
 import { centerOn } from './map.js';
-import { select, getTitle, getAllObjects, getRecords, getPoints, isLine, searchObjects } from './objects.js';
+import {
+  select,
+  getTitle,
+  getAllObjects,
+  getRecords,
+  getPoints,
+  isLine,
+  searchObjects,
+} from './objects.js';
 import { renameCurrentMap } from './maps.js';
-import { signIn, signOut, getSession } from './api.js'; 
+import { signIn, signOut, getSession } from './api.js';
 
 const $ = (selector) => document.querySelector(selector);
 
@@ -123,10 +131,20 @@ const openWorldDialog = (categoryId) => {
 
 // ---------- Настройки ----------
 
+// Гость видит настройки, но поля неактивны — менять может только мастер
+const setSettingsDisabled = (disabled) => {
+  $('#settings-world').disabled = disabled;
+  $('#settings-map').disabled = disabled;
+  $('#settings-labels').disabled = disabled;
+};
+
 const openSettings = () => {
   $('#settings-world').value = state.worldName;
   $('#settings-map').value = state.map.name;
   $('#settings-labels').checked = state.showLabels;
+
+  setSettingsDisabled(!state.isAdmin);
+
   settingsDialog.showModal();
 };
 
@@ -174,14 +192,19 @@ export const initHeader = () => {
   });
 
   $('#settings-world').addEventListener('input', (event) => {
+    if (!state.isAdmin) return;
     state.worldName = event.target.value.trim() || 'Новый мир';
     worldName.textContent = state.worldName;
     emit('settings:change');
   });
 
-  $('#settings-map').addEventListener('input', (event) => renameCurrentMap(event.target.value));
+  $('#settings-map').addEventListener('input', (event) => {
+    if (!state.isAdmin) return;
+    renameCurrentMap(event.target.value);
+  });
 
   $('#settings-labels').addEventListener('change', (event) => {
+    if (!state.isAdmin) return;
     state.showLabels = event.target.checked;
     $('#map').classList.toggle('map-editor__svg--labels', state.showLabels);
     emit('settings:change');
@@ -209,7 +232,7 @@ export const initHeader = () => {
     searchResults.hidden = true;
   });
 
-  // Название мира и подписи могли прийти из файла или из браузера
+  // Название мира и подписи могли прийти из файла или из облака
   on('world:settings', () => {
     worldName.textContent = state.worldName;
     $('#map').classList.toggle('map-editor__svg--labels', state.showLabels);
@@ -263,6 +286,17 @@ export const initHeader = () => {
     } catch (error) {
       authError.textContent = `Не удалось войти: ${error.message}`;
       authError.hidden = false;
+    }
+  });
+
+  // Если гость открыл настройки, а потом вышел/вошёл — обновим блокировку или закроем
+  on('admin:change', () => {
+    if (!settingsDialog.open) return;
+
+    if (state.isAdmin) {
+      setSettingsDisabled(false);
+    } else {
+      settingsDialog.close();
     }
   });
 
